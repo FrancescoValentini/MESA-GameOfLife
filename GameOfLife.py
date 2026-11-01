@@ -98,3 +98,97 @@ class Cell(mesa.Agent):
 
 # ----- END CELL AGENT DEFINITION -----
 
+
+# ----- BEGIN GAME OF LIFE MODEL DEFINITION -----
+class GameOfLife(mesa.Model):
+    """
+    Mesa model holding a width x height grid of Cell agents.
+
+    State:
+        - grid: Grid containing the Cell agents.
+        - generation (int): Current simulation generation.
+        - changed (int): Number of cells that changed state in the last step.
+        - births (int): Cells that became alive in the last step.
+        - deaths (int): Cells that became dead in the last step.
+        - config (dict): Parameters used to recreate the model.
+    """
+
+    PATTERNS = PATTERNS  # also reachable as model.PATTERNS
+
+    def __init__(self, width=50, height=50, pattern="random", density=0.3, seed=42, torus=False, live_cells=None):
+        """
+        Parameters:
+            - width (int): Grid width (default: 50).
+            - height (int): Grid height (default: 50).
+            - pattern (str): Initial configuration (default: "random").
+            - density (float): Initial population density (default: 0.3).
+            - seed (int): Random seed for reproducibility (default: 42).
+            - torus (bool): Whether grid borders wrap around (default: False).
+            - live_cells (list): Explicit coordinates of initially live cells.
+        """
+        self.validate_parameters(width, height, pattern, density, live_cells)
+        super().__init__(rng=seed)
+        LOG.info('Grid config: height=%d | width=%d | borders=%s | pattern=%s | seed=%s',height, width, "periodic" if torus else "closed", pattern, seed)
+        # Parameters needed to build an equivalent model again (UI reset).
+        self.config = dict(width=width, height=height, density=density,seed=seed, torus=torus)
+
+        self.grid = SingleGrid(width, height, torus=torus)
+        self.generation = 0
+        self.changed = 0  # At the initial generation there is no transition.
+        self.births = 0
+        self.deaths = 0
+
+        
+        self._setup_datacollector()
+        self._log_ready()
+
+    # Constructor Helpers
+    @staticmethod
+    def validate_parameters(width, height, pattern, density, live_cells=None):
+        """Raise ValueError if the constructor arguments are inconsistent."""
+        if width < 5 or height < 5:
+            raise ValueError("Dimensions must be at least 5.")
+        if not 0 <= density <= 1:
+            raise ValueError("Density must be between 0 and 1.")
+        if pattern not in (*PATTERNS, "random", "custom"):
+            raise ValueError("Unknown pattern.")
+        if pattern in PATTERNS:
+            pw, ph = pattern_size(pattern)
+            if pw > width or ph > height:
+                raise ValueError(f'Pattern "{pattern}" needs at least {pw}x{ph} cells.')
+        if live_cells is not None:
+            if pattern != "custom":
+                raise ValueError("live_cells can only be used with pattern 'custom'.")
+            if any(not (0 <= x < width and 0 <= y < height) for x, y in live_cells):
+                raise ValueError("live_cells contains a position outside the grid.")
+        LOG.debug("Parameters validated: %dx%d, pattern=%s, density=%.2f, ""live_cells=%s.", width, height, pattern, density,"none" if live_cells is None else len(live_cells))
+
+
+    def _setup_datacollector(self):
+        """Record generation, alive count and changed count every step."""
+        self.datacollector = DataCollector(model_reporters={
+            "generation": "generation",
+            "alive": lambda m: sum(c.alive for c in m.agents),
+            "changed": "changed",
+            "births": "births",
+            "deaths": "deaths",
+        })
+        self.datacollector.collect(self)
+        LOG.debug("DataCollector ready (generation 0 recorded).")
+
+    def _log_ready(self):
+        live = self.live_positions()
+        total = self.grid.width * self.grid.height
+        alive = len(live)
+        dead = total - alive
+        density = 100 * alive / total
+
+        LOG.info("Grid state: total=%d | alive=%d | dead=%d", total, alive, dead)
+        LOG.info("Generation=0 | alive=%d | dead=%d | density=%.1f%%", alive, dead, density)
+
+        if 0 < alive <= 20:
+            LOG.info("Initial live cells: %s", sorted(live))
+
+        if not live:
+            LOG.info("Grid state: empty | status=halted")
+# ----- END GAME OF LIFE MODEL DEFINITION -----
