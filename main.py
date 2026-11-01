@@ -85,7 +85,10 @@ def run_headless(args, model, LOG):
     save_results(history, alive, changed, args.results)
 
 def run_tkinter_ui(args, model, LOG):
-    LOG.warning("UI Not implemented yet.")
+    from GameOfLifeUI import GameOfLifeUI
+    LOG.info("Starting the interactive UI.")
+    GameOfLifeUI(model, args.steps, args.results).run()
+
 
 def main():
     LOG = logging.getLogger("game_of_life.main")
