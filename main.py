@@ -42,6 +42,7 @@ def parse_arguments():
     parser.add_argument("--steps", type=int, default=DEFAULT_STEPS)
     parser.add_argument("--torus", action="store_true",help="periodic borders (default: closed borders)")
     parser.add_argument("--debug", action="store_true",help="verbose per-generation logging")
+    parser.add_argument("--log-file",type=str,default=None,metavar="PATH",help="optional path to a log file (logs to stderr as well)")
     return parser.parse_args(), parser
 
 def create_model(args, log):
@@ -111,7 +112,7 @@ def main():
     LOG = logging.getLogger("game_of_life.main")
     args, parser = parse_arguments()
 
-    configure_logging(args.debug)
+    configure_logging(args.debug, args.log_file)
 
     if args.steps < 0:
         parser.error("--steps must be non-negative")
