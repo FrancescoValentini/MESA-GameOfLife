@@ -312,4 +312,91 @@ class GameOfLife(mesa.Model):
             x, y = cell.pos
             data[y][x] = int(cell.alive)
         return data
+
+    # SIMULATION STEP
+
+    def _step_phase1(self):
+        """
+        Calculate the next state of every cell without modifying
+        the current grid configuration.
+
+        All cells read the same initial configuration to ensure
+        a simultaneous update.
+        """
+
+        # Calculate the next state of every cell.
+        LOG.debug("Phase=1 | generation=%d | cells=%d",self.generation + 1,len(self.agents))
+
+        self.agents.do("compute_next_state")
+
+        # Count cells that will become alive
+        self.births = 0
+
+        for cell in self.agents:
+            if not cell.alive and cell.next_alive:
+                self.births += 1
+
+        # Count cells that will become dead.
+        self.deaths = 0
+
+        for cell in self.agents:
+            if cell.alive and not cell.next_alive:
+                self.deaths += 1
+
+        # Calculate the total number of cells changing state.
+        self.changed = self.births + self.deaths
+
+
+    def _step_phase2(self):
+        """
+        Apply the states calculated during phase 1.
+
+        Update the generation counter and collect the new
+        generation statistics.
+        """
+        
+        LOG.debug("Phase=2 | generation=%d",self.generation + 1)
+
+        self.agents.do("advance")
+
+        # Move to the next generation
+        self.generation += 1
+
+        # Collect statistics for the updated grid
+        self.datacollector.collect(self)
+
+        # Retrieve the number of live cells in the new generation
+        alive = self.datacollector.model_vars["alive"][-1]
+
+        self._log_generation(alive)
+
+        return alive
+
+    def step(self):
+        """
+        Advance the simulation by one generation using two phases.
+
+        Phase 1 calculates the next state of every cell.
+        Phase 2 applies the calculated states simultaneously.
+
+        If the grid is extinct, stop the simulation.
+        If cells are added to an extinct grid, the simulation resumes.
+        """
+
+        # Check whether the grid contains any live cells.
+        if self._is_extinct():
+            self._halt("all cells are dead")
+            return
+
+        self.running = True
+
+        # Phase 1: Calculate the next state of every cell.
+        self._step_phase1()
+
+        # Phase 2: Apply the new states and collect statistics.
+        alive = self._step_phase2()
+
+        # Stop the simulation if no live cells remain.
+        if alive == 0:
+            self._halt(f"extinction at generation {self.generation}")
 # ----- END GAME OF LIFE MODEL DEFINITION -----
