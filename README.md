@@ -93,3 +93,5 @@ The rules:
 - A dead cell with exactly 3 live neighbours becomes alive.
 
 The simulation halts when all cells are dead. In the UI you can draw new cells to resume it.
+
+Complete code explanation (AI generated): [GameOfLife_Explained](docs/GameOfLife_Explained.md)
