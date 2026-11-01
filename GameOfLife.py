@@ -10,7 +10,7 @@ import mesa
 from mesa.datacollection import DataCollector
 from mesa.space import SingleGrid
 
-LOG = logging.getLogger("game_of_life")
+LOG = logging.getLogger("game_of_life.model")
 
 # Each pattern is a list of (x, y) live cells with the top-left corner of its
 # bounding box at (0, 0).  The model centres the bounding box on the grid.

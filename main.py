@@ -38,6 +38,7 @@ def parse_arguments():
     parser.add_argument("--results", type=Path, default=DEFAULT_RESULTS)
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--initial-pattern", default=DEFAULT_PATTERN,choices=["random", "custom", *PATTERNS],help="'custom' starts empty so you can draw in the UI")
+    parser.add_argument("--all-patterns-headless",action="store_true",help="run a headless simulation for every predefined pattern",)
     parser.add_argument("--steps", type=int, default=DEFAULT_STEPS)
     parser.add_argument("--torus", action="store_true",help="periodic borders (default: closed borders)")
     parser.add_argument("--debug", action="store_true",help="verbose per-generation logging")
@@ -84,6 +85,22 @@ def run_headless(args, model, LOG):
     changed = model.datacollector.model_vars["changed"]
     save_results(history, alive, changed, args.results)
 
+def run_all_patterns_headless(args, LOG):
+    LOG.info("Running headless simulations for all patterns.")
+
+    for pattern in PATTERNS:
+        LOG.info("Starting pattern: %s", pattern)
+
+        pattern_args = argparse.Namespace(**vars(args))
+        pattern_args.headless = True
+        pattern_args.initial_pattern = pattern
+        pattern_args.results = args.results / pattern
+
+        model = create_model(pattern_args, LOG)
+        run_headless(pattern_args, model, LOG)
+
+        LOG.info("Finished pattern: %s", pattern)
+
 def run_tkinter_ui(args, model, LOG):
     from GameOfLifeUI import GameOfLifeUI
     LOG.info("Starting the interactive UI.")
@@ -101,10 +118,15 @@ def main():
 
     model = create_model(args, LOG)
 
-    if args.headless:
-        run_headless(args,model,LOG)
+    if args.all_patterns_headless:
+        run_all_patterns_headless(args, LOG)
     else:
-        run_tkinter_ui(args,model,LOG)
+        model = create_model(args, LOG)
+
+        if args.headless:
+            run_headless(args, model, LOG)
+        else:
+            run_tkinter_ui(args, model, LOG)
 
 
 if __name__ == "__main__":
