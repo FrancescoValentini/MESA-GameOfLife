@@ -117,8 +117,6 @@ def main():
     if args.steps < 0:
         parser.error("--steps must be non-negative")
 
-    model = create_model(args, LOG)
-
     if args.all_patterns_headless:
         run_all_patterns_headless(args, LOG)
     else:
