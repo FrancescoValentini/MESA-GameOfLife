@@ -138,7 +138,7 @@ class GameOfLife(mesa.Model):
         self.births = 0
         self.deaths = 0
 
-        
+        self._populate(pattern, density, live_cells)
         self._setup_datacollector()
         self._log_ready()
 
@@ -191,4 +191,79 @@ class GameOfLife(mesa.Model):
 
         if not live:
             LOG.info("Grid state: empty | status=halted")
+
+    def _initial_live_positions(self, pattern, live_cells):
+        """
+        Determine which grid positions are initially alive.
+
+        For predefined patterns, calculate the offset needed to center
+        the pattern on the grid.
+
+        For random patterns, return an empty set because live cells
+        are generated later during grid population.
+
+        For custom patterns, use the positions provided by the user.
+        """
+
+        width = self.grid.width
+        height = self.grid.height
+
+        # Case 1: A predefined pattern is selected.
+        if pattern in PATTERNS:
+            # Get the dimensions of the selected pattern.
+            pattern_width, pattern_height = pattern_size(pattern)
+
+            # Calculate the starting coordinates to center the pattern.
+            offset_x = (width - pattern_width) // 2
+            offset_y = (height - pattern_height) // 2
+
+            LOG.info("Pattern config: name=%s | offset_x=%d | offset_y=%d",pattern,offset_x,offset_y)
+
+            # Shift every pattern coordinate according to the calculated offset.
+            live_positions = set()
+            for x, y in PATTERNS[pattern]:
+                grid_x = x + offset_x
+                grid_y = y + offset_y
+                live_positions.add((grid_x, grid_y))
+
+            return live_positions
+
+        # Case 2: Random pattern.
+        if pattern == "random":
+            # Random positions are generated later in _populate().
+            LOG.info("Random config: density=%.2f",self.config["density"])
+            return set()
+
+        # Case 3: Custom pattern supplied by the user.
+        else:
+            live_positions = set(live_cells or ())
+            LOG.info("Custom config: live_cells=%d",len(live_positions))
+            return live_positions
+
+
+    def _populate(self, pattern, density, live_cells):
+        """
+        Create one Cell agent for every grid position.
+        """
+        width = self.grid.width
+        height = self.grid.height
+        live_positions = self._initial_live_positions(pattern, live_cells)
+
+        for x in range(width):
+            for y in range(height):
+                # Determine whether the current cell should be alive.
+                # for the random pattern  a cell is alive if the random value is below the density.
+                if pattern == "random":
+                    random_value = self.random.random()
+                    is_alive = random_value < density
+                else:
+                    # For predefined and custom patterns, check whether
+                    # the current coordinate belongs to the live positions.
+                    is_alive = (x, y) in live_positions
+
+                # Create the cell and place it at its grid coordinates
+                cell = Cell(self, is_alive)
+                self.grid.place_agent(cell, (x, y))
+
+        LOG.debug("Grid population: agents=%d | width=%d | height=%d",len(self.agents),width,height)
 # ----- END GAME OF LIFE MODEL DEFINITION -----
