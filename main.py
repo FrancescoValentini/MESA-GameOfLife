@@ -66,6 +66,27 @@ def create_model(args, log):
     except ValueError as error:
         raise error
 
+
+def run_headless(args, model, LOG):
+    LOG.info("Headless run: %d generations.", args.steps)
+    # Boards are snapshotted every step; the alive/changed statistics
+    # come straight from the model's DataCollector.
+    history = [model.matrix()]
+    for _ in range(args.steps):
+        before = model.generation
+        model.step()
+        if model.generation == before:  # model halted: all cells dead
+            LOG.warning("Stopping early at generation %d of %d.",model.generation, args.steps)
+            break
+        history.append(model.matrix())
+
+    alive = model.datacollector.model_vars["alive"]
+    changed = model.datacollector.model_vars["changed"]
+    save_results(history, alive, changed, args.results)
+
+def run_tkinter_ui(args, model, LOG):
+    LOG.warning("UI Not implemented yet.")
+
 def main():
     LOG = logging.getLogger("game_of_life.main")
     args, parser = parse_arguments()
@@ -75,7 +96,12 @@ def main():
     if args.steps < 0:
         parser.error("--steps must be non-negative")
 
-    LOG.info("Hello World")
+    model = create_model(args, LOG)
+
+    if args.headless:
+        run_headless(args,model,LOG)
+    else:
+        run_tkinter_ui(args,model,LOG)
 
 
 if __name__ == "__main__":
