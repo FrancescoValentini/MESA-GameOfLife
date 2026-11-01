@@ -13,6 +13,7 @@ Examples:
 import argparse
 import logging
 from pathlib import Path
+import random
 
 from GameOfLife import GameOfLife, PATTERNS
 from logger_config import configure_logging
@@ -41,6 +42,29 @@ def parse_arguments():
     parser.add_argument("--torus", action="store_true",help="periodic borders (default: closed borders)")
     parser.add_argument("--debug", action="store_true",help="verbose per-generation logging")
     return parser.parse_args(), parser
+
+def create_model(args, log):
+    """Create and initialize the Game of Life model."""
+
+    seed = (
+        args.seed
+        if args.seed is not None
+        else random.randrange(RANDOM_SEED_RANGE)
+    )
+
+    log.info("Using seed %d.", seed)
+
+    try:
+        return GameOfLife(
+            width=args.width,
+            height=args.height,
+            pattern=args.initial_pattern,
+            density=args.density,
+            seed=seed,
+            torus=args.torus,
+        )
+    except ValueError as error:
+        raise error
 
 def main():
     LOG = logging.getLogger("game_of_life.main")
