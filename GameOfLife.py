@@ -240,7 +240,6 @@ class GameOfLife(mesa.Model):
             LOG.info("Custom config: live_cells=%d",len(live_positions))
             return live_positions
 
-
     def _populate(self, pattern, density, live_cells):
         """
         Create one Cell agent for every grid position.
@@ -266,4 +265,51 @@ class GameOfLife(mesa.Model):
                 self.grid.place_agent(cell, (x, y))
 
         LOG.debug("Grid population: agents=%d | width=%d | height=%d",len(self.agents),width,height)
+
+
+    # Simulation methods
+    def _is_extinct(self):
+        """True when no cell is alive"""
+        return not any(c.alive for c in self.agents)
+
+    def _halt(self, reason):
+        """Stop the simulation."""
+        if self.running:
+            LOG.warning("SIMULATION HALTED: generation=%d | reason=%s",self.generation,reason)
+
+        self.running = False
+
+    def _log_generation(self, alive):
+        # total number of cells in the grid
+        total = self.grid.width * self.grid.height
+
+        # Retrieve the number of live cells from the previous generation
+        previous_alive = self.datacollector.model_vars["alive"][-2]
+
+        # number of live and dead cells
+        dead = total - alive 
+
+        # Change in the number of live cells
+        alive_change = alive - previous_alive 
+
+        # Percentage of live cells
+        density = 100 * alive / total 
+
+        LOG.info("Generation=%d | alive=%d (%+d) | dead=%d | births=%d | deaths=%d | changed=%d | density=%.1f%%", 
+            self.generation, alive, alive_change, dead, self.births, self.deaths, self.changed, density)
+
+        if self.changed == 0 and alive > 0:
+            LOG.info("Stable configuration: generation=%d",self.generation)
+
+    def live_positions(self):
+        """Returns a Set of (x, y) positions of all live cells"""
+        return {c.pos for c in self.agents if c.alive}
+
+    def matrix(self):
+        """Returns the Board as a list of rows, indexed [y][x] (Matplotlib order)"""
+        data = [[0] * self.grid.width for _ in range(self.grid.height)]
+        for cell in self.agents:
+            x, y = cell.pos
+            data[y][x] = int(cell.alive)
+        return data
 # ----- END GAME OF LIFE MODEL DEFINITION -----
